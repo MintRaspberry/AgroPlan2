@@ -1,0 +1,562 @@
+{% extends "base.html" %}
+
+{% block title %}Выбор поля на карте России - AgroPlan{% endblock %}
+
+{% block extra_css %}
+<style>
+.map-container {
+    height: 600px;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-medium);
+    margin: 20px 0;
+}
+
+.field-selection-panel {
+    background: rgba(23, 42, 69, 0.8);
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.selected-field-info {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--radius-lg);
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.map-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.instruction-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.instruction-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.step-number {
+    background: var(--gradient-emerald);
+    color: var(--deep-navy);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--gradient-emerald);
+    color: var(--deep-navy);
+    padding: 16px 20px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-large);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideInRight 0.3s ease-out;
+}
+
+.notification-error {
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+    color: white;
+}
+
+.notification button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.field-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Стили для Leaflet */
+.leaflet-container {
+    font-family: 'Inter', sans-serif;
+    background: var(--dark-slate);
+}
+
+.leaflet-popup-content {
+    margin: 8px 12px;
+    font-family: 'Inter', sans-serif;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>🗺️ Выбор поля на карте России</h2>
+        <a href="/history" class="btn btn-secondary">← Назад к истории</a>
+    </div>
+</div>
+
+<div class="instruction-card">
+    <h3>📋 Как выбрать поле:</h3>
+    <div class="instruction-step">
+        <div class="step-number">1</div>
+        <div>Найдите ваше поле на карте России ниже</div>
+    </div>
+    <div class="instruction-step">
+        <div class="step-number">2</div>
+        <div>Кликните на поле для выбора</div>
+    </div>
+    <div class="instruction-step">
+        <div class="step-number">3</div>
+        <div>Заполните информацию о посадке</div>
+    </div>
+</div>
+
+<div class="field-selection-panel">
+    <h4>📍 Карта сельскохозяйственных полей России</h4>
+
+    <div class="map-controls">
+        <button type="button" id="resetViewBtn" class="btn btn-secondary">🗺️ Весь вид России</button>
+        <button type="button" id="findFieldsBtn" class="btn btn-secondary">🔍 Показать все поля</button>
+    </div>
+
+    <div class="map-container">
+        <div id="russiaMap"></div>
+    </div>
+
+    <div id="selectedFieldInfo" class="selected-field-info" style="display: none;">
+        <h5>✅ Выбрано поле:</h5>
+        <div id="fieldDetails">
+            <!-- Информация о выбранном поле будет здесь -->
+        </div>
+    </div>
+</div>
+
+<form method="post" action="/history/add" id="historyForm">
+    <input type="hidden" id="selectedFieldId" name="field_id" required>
+
+    <div class="card">
+        <h3>📝 Данные о посадке для выбранного поля</h3>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="year" class="form-label">Год</label>
+                <input type="number" id="year" name="year" min="2000" max="2030"
+                       value="{{ now().year }}" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label for="season" class="form-label">Сезон</label>
+                <select id="season" name="season" class="form-select" required>
+                    <option value="весна">Весна</option>
+                    <option value="лето">Лето</option>
+                    <option value="осень">Осень</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="crop" class="form-label">Культура</label>
+                <select id="crop" name="crop" class="form-select" required>
+                    <option value="">-- Выберите культуру --</option>
+                    <option value="пшеница">Пшеница</option>
+                    <option value="ячмень">Ячмень</option>
+                    <option value="овёс">Овёс</option>
+                    <option value="рожь">Рожь</option>
+                    <option value="кукуруза">Кукуруза</option>
+                    <option value="подсолнечник">Подсолнечник</option>
+                    <option value="соя">Соя</option>
+                    <option value="рапс">Рапс</option>
+                    <option value="гречиха">Гречиха</option>
+                    <option value="лён">Лён</option>
+                    <option value="картофель">Картофель</option>
+                    <option value="свёкла">Свёкла</option>
+                    <option value="горох">Горох</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="yield_amount" class="form-label">Урожайность (т/га)</label>
+                <input type="number" id="yield_amount" name="yield_amount"
+                       step="0.1" min="0" class="form-input" placeholder="3.5">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="notes" class="form-label">Заметки</label>
+            <textarea id="notes" name="notes" rows="3" class="form-input"
+                      placeholder="Дополнительная информация о посадке..."></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn btn-primary btn-large" disabled>
+            ✅ Добавить запись истории
+        </button>
+
+        <div id="formWarning" class="card" style="background: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.3); margin-top: 15px; display: none;">
+            <p style="color: var(--gold); margin: 0;">
+                ⚠️ Пожалуйста, выберите поле на карте перед отправкой формы
+            </p>
+        </div>
+    </div>
+</form>
+
+<script>
+// Глобальные переменные для карты
+let russiaMap;
+let fieldLayers = {};
+let selectedFieldId = null;
+
+// Границы России для ограничения просмотра
+const russiaBounds = L.latLngBounds(
+    [41.185, 19.638], // Юго-запад
+    [81.858, 180.0] // Северо-восток
+);
+
+// Инициализация карты России
+function initRussiaMap() {
+    console.log('Инициализация карты России...');
+
+    try {
+        // Создаем карту с центром на европейской части России
+        russiaMap = L.map('russiaMap', {
+            minZoom: 3,
+            maxBounds: russiaBounds,
+            maxBoundsViscosity: 1.0
+        }).setView([55.7558, 37.6173], 4);
+
+        // Добавляем базовый слой OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 13,
+            minZoom: 3
+        }).addTo(russiaMap);
+
+        // Ограничиваем просмотр территорией России
+        russiaMap.setMaxBounds(russiaBounds);
+
+        // Загружаем и отображаем поля
+        loadFieldsOnRussiaMap();
+
+        // Добавляем контроль масштаба
+        L.control.scale({ imperial: false, metric: true }).addTo(russiaMap);
+
+        // Обработчики кнопок управления
+        document.getElementById('resetViewBtn').addEventListener('click', function() {
+            russiaMap.setView([55.7558, 37.6173], 4);
+        });
+
+        document.getElementById('findFieldsBtn').addEventListener('click', function() {
+            focusOnFields();
+        });
+
+        console.log('Карта России инициализирована');
+
+    } catch (error) {
+        console.error('Ошибка инициализации карты России:', error);
+        showNotification('Ошибка загрузки карты', 'error');
+    }
+}
+
+// Загрузка полей на карту России
+function loadFieldsOnRussiaMap() {
+    fetch('/api/fields/overview')
+    .then(response => response.json())
+    .then(fields => {
+        console.log(`Загружено ${fields.length} полей`);
+
+        if (fields.length === 0) {
+            showNotification('Нет полей для отображения. Сначала создайте поля.', 'info');
+            return;
+        }
+
+        fields.forEach(field => {
+            if (field.polygon_coords) {
+                try {
+                    const polygonData = JSON.parse(field.polygon_coords);
+
+                    // Создаем полигон для поля
+                    const polygon = L.polygon(polygonData, {
+                        color: '#10b981',
+                        fillColor: '#10b981',
+                        fillOpacity: 0.4,
+                        weight: 2
+                    }).addTo(russiaMap);
+
+                    // Создаем попап с информацией
+                    const popupContent = `
+                        <div style="text-align: center; min-width: 200px;">
+                            <h4 style="margin: 0 0 10px 0; color: #065f46;">${field.name}</h4>
+                            <div style="text-align: left;">
+                                <p style="margin: 5px 0;"><strong>Площадь:</strong> ${field.area || 'не указана'} га</p>
+                                <p style="margin: 5px 0;"><strong>ID поля:</strong> #${field.id}</p>
+                                <p style="margin: 5px 0;"><strong>Координаты:</strong> ${field.latitude ? field.latitude.toFixed(4) : 'N/A'}, ${field.longitude ? field.longitude.toFixed(4) : 'N/A'}</p>
+                            </div>
+                            <button onclick="selectFieldOnMap(${field.id})"
+                            style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; width: 100%;">
+                                ✅ Выбрать это поле
+                            </button>
+                        </div>
+                    `;
+
+                    polygon.bindPopup(popupContent);
+
+                    // Обработчик клика на полигон
+                    polygon.on('click', function(e) {
+                        selectFieldOnMap(field.id);
+                        // Открываем попап при клике
+                        polygon.openPopup();
+                    });
+
+                    // Сохраняем слой для дальнейшего использования
+                    fieldLayers[field.id] = polygon;
+
+                } catch (e) {
+                    console.error('Ошибка парсинга полигона для поля', field.id, e);
+                }
+            } else if (field.latitude && field.longitude) {
+                // Если нет полигона, но есть координаты, создаем маркер
+                const marker = L.marker([field.latitude, field.longitude], {
+                    icon: L.divIcon({
+                        className: 'field-marker',
+                        html: '📍',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 30]
+                    })
+                }).addTo(russiaMap);
+
+                const popupContent = `
+                    <div style="text-align: center; min-width: 200px;">
+                        <h4 style="margin: 0 0 10px 0; color: #065f46;">${field.name}</h4>
+                        <div style="text-align: left;">
+                            <p style="margin: 5px 0;"><strong>Площадь:</strong> ${field.area || 'не указана'} га</p>
+                            <p style="margin: 5px 0;"><strong>ID поля:</strong> #${field.id}</p>
+                        </div>
+                        <button onclick="selectFieldOnMap(${field.id})"
+                        style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; width: 100%;">
+                            ✅ Выбрать это поле
+                        </button>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+
+                // Обработчик клика на маркер
+                marker.on('click', function(e) {
+                    selectFieldOnMap(field.id);
+                    marker.openPopup();
+                });
+
+                fieldLayers[field.id] = marker;
+            }
+        });
+
+        // Автоматически фокусируемся на полях если они есть
+        if (fields.length > 0) {
+            setTimeout(focusOnFields, 1000);
+        }
+
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки полей:', error);
+        showNotification('Ошибка загрузки данных полей', 'error');
+    });
+}
+
+// Фокусировка на всех полях
+function focusOnFields() {
+    const fieldBounds = L.latLngBounds();
+
+    Object.values(fieldLayers).forEach(layer => {
+        if (layer.getBounds) {
+            fieldBounds.extend(layer.getBounds());
+        } else if (layer.getLatLng) {
+            fieldBounds.extend(layer.getLatLng());
+        }
+    });
+
+    if (!fieldBounds.isValid()) {
+        // Если нет полей с координатами, показываем центральную Россию
+        russiaMap.setView([55.7558, 37.6173], 4);
+        showNotification('Используйте карту России для выбора поля', 'info');
+        return;
+    }
+
+    // Увеличиваем bounds немного для лучшего обзора
+    const paddedBounds = fieldBounds.pad(0.1);
+
+    // Проверяем, чтобы не выходили за границы России
+    const limitedBounds = russiaBounds.intersects(paddedBounds) ?
+        paddedBounds : russiaBounds;
+
+    russiaMap.fitBounds(limitedBounds);
+}
+
+// Выбор поля на карте
+function selectFieldOnMap(fieldId) {
+    // Сбрасываем предыдущее выделение
+    if (selectedFieldId && fieldLayers[selectedFieldId]) {
+        const previousLayer = fieldLayers[selectedFieldId];
+        if (previousLayer.setStyle) {
+            previousLayer.setStyle({
+                color: '#10b981',
+                fillColor: '#10b981',
+                fillOpacity: 0.4,
+                weight: 2
+            });
+        }
+    }
+
+    // Выделяем выбранное поле
+    if (fieldLayers[fieldId]) {
+        const selectedLayer = fieldLayers[fieldId];
+        if (selectedLayer.setStyle) {
+            selectedLayer.setStyle({
+                color: '#f59e0b',
+                fillColor: '#f59e0b',
+                fillOpacity: 0.6,
+                weight: 3
+            });
+        }
+
+        // Центрируем карту на выбранном поле
+        if (selectedLayer.getBounds) {
+            russiaMap.fitBounds(selectedLayer.getBounds().pad(0.05));
+        } else if (selectedLayer.getLatLng) {
+            russiaMap.setView(selectedLayer.getLatLng(), 10);
+        }
+    }
+
+    // Загружаем информацию о поле
+    fetch(`/api/fields/${fieldId}/geojson`)
+    .then(response => {
+        if (!response.ok) throw new Error('Поле не найдено');
+        return response.json();
+    })
+    .then(fieldData => {
+        const field = fieldData.features[0].properties;
+
+        // Обновляем информацию о выбранном поле
+        document.getElementById('fieldDetails').innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <strong>Название:</strong><br>
+                    ${field.name}
+                </div>
+                <div>
+                    <strong>Площадь:</strong><br>
+                    ${field.area || 'не указана'} га
+                </div>
+                <div>
+                    <strong>ID поля:</strong><br>
+                    #${field.id}
+                </div>
+                <div>
+                    <strong>Добавлено:</strong><br>
+                    ${new Date(field.created_at).toLocaleDateString('ru-RU')}
+                </div>
+            </div>
+        `;
+
+        // Показываем панель информации
+        document.getElementById('selectedFieldInfo').style.display = 'block';
+
+        // Заполняем скрытое поле
+        document.getElementById('selectedFieldId').value = fieldId;
+        selectedFieldId = fieldId;
+
+        // Активируем кнопку отправки
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('formWarning').style.display = 'none';
+
+        showNotification(`Выбрано поле: ${field.name}`, 'success');
+
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки данных поля:', error);
+        showNotification('Ошибка загрузки данных поля', 'error');
+    });
+}
+
+// Валидация формы
+document.getElementById('historyForm').addEventListener('submit', function(e) {
+    if (!selectedFieldId) {
+        e.preventDefault();
+        document.getElementById('formWarning').style.display = 'block';
+        showNotification('Пожалуйста, выберите поле на карте', 'error');
+    }
+});
+
+// Показать уведомление
+function showNotification(message, type = 'info') {
+    // Удаляем существующие уведомления
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => notification.remove());
+
+    // Создаем новое уведомление
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()">×</button>
+    `;
+    document.body.appendChild(notification);
+
+    // Автоматическое скрытие через 5 секунд
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Загрузка страницы выбора поля на карте России...');
+    setTimeout(() => initRussiaMap(), 500);
+});
+</script>
+{% endblock %}

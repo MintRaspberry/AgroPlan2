@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}Калькулятор - AgroPlan{% endblock %}
+
+{% block extra_css %}
+<style>
+.calculator-hero {
+    background:
+        radial-gradient(ellipse at 80% 20%, rgba(255, 215, 0, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 80%, rgba(100, 255, 218, 0.15) 0%, transparent 50%),
+        var(--gradient-premium);
+    border-radius: var(--radius-3xl);
+    padding: 80px 60px;
+    margin-bottom: 60px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-luxury);
+    border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.calculator-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle fill="%23ffd700" opacity="0.05" cx="50" cy="50" r="2"/></svg>');
+    animation: float 25s infinite linear;
+}
+
+.calculator-form {
+    background: rgba(23, 42, 69, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 215, 0, 0.1);
+    border-radius: var(--radius-2xl);
+    padding: 50px;
+    box-shadow: var(--shadow-elegant);
+    margin-bottom: 60px;
+    transition: all 0.4s var(--ease-smooth);
+}
+
+.calculator-form:hover {
+    border-color: rgba(255, 215, 0, 0.2);
+    box-shadow: var(--shadow-luxury);
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin: 40px 0;
+}
+
+.result-card {
+    background: rgba(23, 42, 69, 0.8);
+    border: 1px solid;
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    transition: all 0.4s var(--ease-smooth);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+}
+
+.result-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: inherit;
+    opacity: 0.6;
+}
+
+.result-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-luxury);
+}
+
+.result-income {
+    border-color: rgba(100, 255, 218, 0.3);
+}
+
+.result-income::before {
+    background: var(--gradient-emerald);
+}
+
+.result-cost {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.result-cost::before {
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
+
+.result-profit {
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+.result-profit::before {
+    background: var(--gradient-gold);
+}
+
+.result-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.result-label {
+    font-size: 0.9rem;
+    color: var(--light-slate);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.positive {
+    color: var(--emerald);
+}
+
+.negative {
+    color: #ef4444;
+}
+
+.neutral {
+    color: var(--gold);
+}
+
+.profitability-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+.profitability-high {
+    background: rgba(100, 255, 218, 0.2);
+    color: var(--emerald);
+    border: 1px solid rgba(100, 255, 218, 0.3);
+}
+
+.profitability-medium {
+    background: rgba(255, 215, 0, 0.2);
+    color: var(--gold);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.profitability-low {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.crop-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.crop-info-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    text-align: center;
+}
+
+.crop-info-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 8px;
+}
+
+.crop-info-label {
+    font-size: 0.8rem;
+    color: var(--light-slate);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+@media (max-width: 768px) {
+    .calculator-hero {
+        padding: 60px 32px;
+    }
+
+    .calculator-form {
+        padding: 32px 24px;
+    }
+
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Премиум герой -->
+<section class="calculator-hero">
+    <div class="container">
+        <h1 class="hero-title">🧮 Экономический калькулятор</h1>
+        <p class="hero-subtitle">
+            Точный расчет рентабельности и финансовое моделирование для максимизации прибыли вашего хозяйства
+        </p>
+    </div>
+</section>
+
+<!-- Форма калькулятора -->
+<section class="calculator-form">
+    <div class="container">
+        <h2 class="section-title">Расчет прибыльности</h2>
+
+        <form method="post" action="/calculator">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; margin-bottom: 40px;">
+                <div class="form-group">
+                    <label for="crop" class="form-label">Сельскохозяйственная культура</label>
+                    <select id="crop" name="crop" required class="form-select">
+                        <option value="">-- Выберите культуру --</option>
+                        <option value="пшеница" {% if crop =='пшеница' %}selected{% endif %}>Пшеница</option>
+                        <option value="картофель" {% if crop =='картофель' %}selected{% endif %}>Картофель</option>
+                        <option value="подсолнечник" {% if crop =='подсолнечник' %}selected{% endif %}>Подсолнечник</option>
+                        <option value="горох" {% if crop =='горох' %}selected{% endif %}>Горох</option>
+                        <option value="ячмень" {% if crop =='ячмень' %}selected{% endif %}>Ячмень</option>
+                        <option value="кукуруза" {% if crop =='кукуруза' %}selected{% endif %}>Кукуруза</option>
+                        <option value="овёс" {% if crop =='овёс' %}selected{% endif %}>Овёс</option>
+                        <option value="соя" {% if crop =='соя' %}selected{% endif %}>Соя</option>
+                        <option value="рожь" {% if crop =='рожь' %}selected{% endif %}>Рожь</option>
+                        <option value="гречиха" {% if crop =='гречиха' %}selected{% endif %}>Гречиха</option>
+                        <option value="лён" {% if crop =='лён' %}selected{% endif %}>Лён</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="area" class="form-label">Площадь посева (гектары)</label>
+                    <input type="number" id="area" name="area" step="0.1" min="0.1" required
+                           class="form-input" placeholder="Например: 10.5"
+                           value="{{ area if area else '' }}">
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button type="submit" class="btn btn-primary btn-large">
+                    <span style="font-size: 1.2em;">🧮</span>
+                    <span>Рассчитать прибыльность</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Результаты расчета -->
+{% if calculation %}
+<section class="calculator-form">
+    <div class="container">
+        <h2 class="section-title">Результаты расчета для {{ crop }}</h2>
+
+        <!-- Информация о культуре -->
+        <div class="crop-info-grid">
+            <div class="crop-info-item">
+                <div class="crop-info-value">{{ "%.1f"|format(area) }} га</div>
+                <div class="crop-info-label">Площадь посева</div>
+            </div>
+            <div class="crop-info-item">
+                <div class="crop-info-value">{{ "{:,.0f}".format(cost_per_ha|int) }} ₽</div>
+                <div class="crop-info-label">Затраты на 1 га</div>
+            </div>
+            <div class="crop-info-item">
+                <div class="crop-info-value">{{ "{:,.0f}".format(income_per_ha|int) }} ₽</div>
+                <div class="crop-info-label">Доход с 1 га</div>
+            </div>
+            <div class="crop-info-item">
+                <div class="crop-info-value">{{ "{:,.0f}".format((income_per_ha - cost_per_ha)|int) }} ₽</div>
+                <div class="crop-info-label">Прибыль с 1 га</div>
+            </div>
+        </div>
+
+        <!-- Основные результаты -->
+        <div class="results-grid">
+            <div class="result-card result-cost">
+                <div class="result-value negative">{{ "{:,.0f}".format(total_cost|int) }} ₽</div>
+                <div class="result-label">Общие затраты</div>
+                <p style="color: var(--light-slate); margin-top: 12px; font-size: 0.9rem;">
+                    Включая семена, удобрения, обработку и уборку
+                </p>
+            </div>
+
+            <div class="result-card result-income">
+                <div class="result-value positive">{{ "{:,.0f}".format(total_income|int) }} ₽</div>
+                <div class="result-label">Ожидаемый доход</div>
+                <p style="color: var(--light-slate); margin-top: 12px; font-size: 0.9rem;">
+                    На основе среднерыночных цен
+                </p>
+            </div>
+
+            <div class="result-card result-profit">
+                <div class="result-value {% if profit > 0 %}positive{% else %}negative{% endif %}">
+                    {{ "{:,.0f}".format(profit|int) }} ₽
+                </div>
+                <div class="result-label">Чистая прибыль</div>
+                {% if profit > 0 %}
+                <div class="profitability-badge profitability-high">
+                    ✅ Прибыльный
+                </div>
+                {% else %}
+                <div class="profitability-badge profitability-low">
+                    ❌ Убыточный
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="result-card">
+                <div class="result-value neutral">{{ "%.1f"|format(profitability) }}%</div>
+                <div class="result-label">Рентабельность</div>
+                {% if profitability > 20 %}
+                <div class="profitability-badge profitability-high">
+                    🚀 Высокая рентабельность
+                </div>
+                {% elif profitability > 10 %}
+                <div class="profitability-badge profitability-medium">
+                    ⚡ Средняя рентабельность
+                </div>
+                {% else %}
+                <div class="profitability-badge profitability-low">
+                    📉 Низкая рентабельность
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Детализация расчета -->
+        <div class="card" style="background: rgba(255, 215, 0, 0.05); border-color: rgba(255, 215, 0, 0.2); margin-top: 30px;">
+            <h3 style="text-align: center; margin-bottom: 24px;">📊 Детализация расчета</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--emerald);">{{ "{:,.0f}".format(cost_per_ha|int) }} ₽/га</div>
+                    <div style="font-size: 0.8rem; color: var(--light-slate);">Затраты на гектар</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--emerald);">{{ "{:,.0f}".format(income_per_ha|int) }} ₽/га</div>
+                    <div style="font-size: 0.8rem; color: var(--light-slate);">Доход с гектара</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--emerald);">{{ "{:,.0f}".format((income_per_ha - cost_per_ha)|int) }} ₽/га</div>
+                    <div style="font-size: 0.8rem; color: var(--light-slate);">Прибыль с гектара</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--emerald);">{{ "%.1f"|format(profitability) }}%</div>
+                    <div style="font-size: 0.8rem; color: var(--light-slate);">Рентабельность</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Информационная карточка -->
+<section>
+    <div class="container">
+        <div class="card" style="background: linear-gradient(135deg, rgba(255, 243, 205, 0.1), rgba(255, 234, 167, 0.1)); border: 1px solid rgba(255, 215, 0, 0.2);">
+            <h3 style="text-align: center; margin-bottom: 16px;">ℹ️ О калькуляторе</h3>
+            <p style="text-align: center; color: var(--light-slate); margin-bottom: 16px;">
+                Калькулятор использует среднерыночные цены на семена, удобрения, средства защиты растений и готовую продукцию.
+            </p>
+            <p style="text-align: center; color: var(--gold); font-weight: 600;">
+                💡 Внимание: расчеты являются ориентировочными. Фактические затраты и доходы могут отличаться в зависимости от региона, технологии выращивания и рыночной конъюнктуры.
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

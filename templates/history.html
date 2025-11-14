@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Журнал истории культур - Планировщик севооборота{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📊 Журнал истории культур</h2>
+    <p>Полная история посадок по всем полям с аналитикой и статистикой.</p>
+</div>
+
+<!-- Статистика -->
+<div class="stats-cards">
+    <div class="stat-card">
+        <h3>{{ history|length }}</h3>
+        <p>Всего записей</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ (history|map(attribute='field_area')|sum)|round(1) if history else 0 }}</h3>
+        <p>Гектаров в обработке</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ (history|map(attribute='year')|unique|list)|length if history else 0 }}</h3>
+        <p>Лет истории</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ (history|map(attribute='crop')|unique|list)|length if history else 0 }}</h3>
+        <p>Разных культур</p>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="filters">
+    <div class="filter-group">
+        <label for="yearFilter">Фильтр по году:</label>
+        <select id="yearFilter" onchange="filterByYear(this.value)">
+            <option value="">Все годы</option>
+            {% for year in years %}
+            <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+        </select>
+        
+        <button onclick="clearFilters()" class="btn-secondary">❌ Сбросить фильтры</button>
+        <button onclick="exportToCSV()" class="btn">📥 Экспорт в CSV</button>
+    </div>
+</div>
+
+<!-- Таблица истории -->
+<div class="history-table">
+    <table>
+        <thead>
+            <tr>
+                <th>Год</th>
+                <th>Сезон</th>
+                <th>Поле</th>
+                <th>Культура</th>
+                <th>Урожайность</th>
+                <th>Заметки</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in history %}
+            <tr>
+                <td><strong>{{ record.year }}</strong></td>
+                <td>
+                    {% if record.season %}
+                    <span class="season-badge season-{{ record.season }}">
+                        {{ record.season }}
+                    </span>
+                    {% else %}
+                    <span style="color: var(--text-light);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/fields/{{ record.field_id }}" style="color: var(--primary); text-decoration: none;">
+                        {{ record.field_name }}
+                    </a>
+                </td>
+                <td>{{ record.crop }}</td>
+                <td>
+                    {% if record.yield_amount %}
+                    <strong>{{ "%.1f"|format(record.yield_amount) }}</strong> т/га
+                    {% else %}
+                    <span style="color: var(--text-light);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if record.notes %}
+                    <span title="{{ record.notes }}">📝</span>
+                    {% else %}
+                    <span style="color: var(--text-light);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="/history/edit/{{ record.id }}" title="Редактировать" style="color: var(--primary);">
+                            ✏️
+                        </a>
+                        <a href="/history/delete/{{ record.id }}" title="Удалить" style="color: var(--danger);"
+                           onclick="return confirm('Удалить запись за {{ record.year }} год?')">
+                            🗑️
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not history %}
+<div class="card" style="text-align: center; padding: 60px 20px;">
+    <div style="font-size: 4rem; margin-bottom: 20px;">📝</div>
+    <h3 style="color: var(--text-light);">История посадок пуста</h3>
+    <p style="color: var(--text-light);">Добавьте первую запись на странице поля</p>
+    <a href="/fields" class="btn" style="margin-top: 20px;">📋 Перейти к полям</a>
+</div>
+{% endif %}
+
+<script>
+function filterByYear(year) {
+    if (year) {
+        window.location.href = `/history?year=${year}`;
+    } else {
+        window.location.href = '/history';
+    }
+}
+
+function clearFilters() {
+    window.location.href = '/history';
+}
+
+function exportToCSV() {
+    // Простая реализация экспорта в CSV
+    let csv = 'Год,Сезон,Поле,Культура,Урожайность,Заметки\n';
+
+    {% for record in history %}
+    csv += `{{ record.year }},{{ record.season or '' }},{{ record.field_name }},{{ record.crop }},{{ record.yield_amount or '' }},{{ record.notes or '' }}\n`;
+    {% endfor %}
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'история_посадок.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

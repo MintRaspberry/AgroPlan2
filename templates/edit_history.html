@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование записи - Планировщик севооборота{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: between; align-items: center;">
+        <h2>✏️ Редактирование записи истории</h2>
+        <a href="/fields/{{ entry.field_id }}" class="btn-secondary">← Назад к полю</a>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="post" action="/history/edit/{{ entry.id }}">
+        <div class="form-grid">
+            <div>
+                <label for="year">Год:</label>
+                <input type="number" id="year" name="year" min="2000" max="2030" value="{{ entry.year }}" required>
+            </div>
+            <div>
+                <label for="season">Сезон:</label>
+                <select id="season" name="season" required>
+                    <option value="весна" {% if entry.season =='весна' %}selected{% endif %}>Весна</option>
+                    <option value="лето" {% if entry.season =='лето' %}selected{% endif %}>Лето</option>
+                    <option value="осень" {% if entry.season =='осень' %}selected{% endif %}>Осень</option>
+                </select>
+            </div>
+            <div>
+                <label for="crop">Культура:</label>
+                <input type="text" id="crop" name="crop" value="{{ entry.crop }}" required list="crops">
+                <datalist id="crops">
+                    <option value="пшеница">
+                    <option value="картофель">
+                    <option value="подсолнечник">
+                    <option value="горох">
+                    <option value="ячмень">
+                    <option value="кукуруза">
+                    <option value="овёс">
+                    <option value="соя">
+                    <option value="рожь">
+                    <option value="гречиха">
+                    <option value="лен">
+                </datalist>
+            </div>
+            <div>
+                <label for="yield_amount">Урожайность (т/га):</label>
+                <input type="number" id="yield_amount" name="yield_amount" step="0.1" min="0"
+                       value="{{ entry.yield_amount or '' }}" placeholder="3.5">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Заметки:</label>
+            <textarea id="notes" name="notes" rows="3" placeholder="Дополнительная информация о посадке...">{{ entry.notes or '' }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-top: 25px;">
+            <button type="submit" class="btn">✅ Сохранить изменения</button>
+            <a href="/fields/{{ entry.field_id }}" class="btn-secondary">❌ Отмена</a>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="background: linear-gradient(135deg, #fff3cd, #ffeaa7);">
+    <h4>ℹ️ Информация о записи</h4>
+    <p><strong>Поле:</strong> {{ entry.field_name }}</p>
+    <p><strong>Создано:</strong> {{ entry.created_at[:16] }}</p>
+    {% if entry.notes %}
+    <p><strong>Текущие заметки:</strong> {{ entry.notes }}</p>
+    {% endif %}
+</div>
+{% endblock %}

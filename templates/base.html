@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AgroPlan - Элитный планировщик севооборота{% endblock %}</title>
+    <meta name="description" content="Премиальная система планирования севооборота для максимальной урожайности и прибыли">
+
+    <!-- Премиум шрифты -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <!-- Наши стили -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Премиум фавикон -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a192f'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='%2364ffda'>🌱</text></svg>">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <!-- Премиум хедер -->
+    <header class="header" id="mainHeader">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    🌱
+                </div>
+                <div class="logo-text">
+                    AgroPlan
+                </div>
+            </a>
+            <nav class="nav">
+                <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">
+                    <span>🏠</span>
+                    <span>Главная</span>
+                </a>
+                <a href="/fields" class="nav-link {% if request.url.path.startswith('/fields') %}active{% endif %}">
+                    <span>🗺️</span>
+                    <span>Поля</span>
+                </a>
+                <a href="/history" class="nav-link {% if request.url.path.startswith('/history') %}active{% endif %}">
+                    <span>📊</span>
+                    <span>Аналитика</span>
+                </a>
+                <a href="/recommendations" class="nav-link {% if request.url.path.startswith('/recommendations') %}active{% endif %}">
+                    <span>💡</span>
+                    <span>Рекомендации</span>
+                </a>
+                <a href="/calculator" class="nav-link {% if request.url.path.startswith('/calculator') %}active{% endif %}">
+                    <span>🧮</span>
+                    <span>Калькулятор</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        <div class="container">
+            {% block content %}
+            <!-- Контент будет переопределен в дочерних шаблонах -->
+            {% endblock %}
+        </div>
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <!-- Наши скрипты -->
+    <script src="/static/js/map.js"></script>
+    <script src="/static/js/charts.js"></script>
+
+    <script>
+        // Премиум эффект скролла для хедера
+        window.addEventListener('scroll', function() {
+            const header = document.getElementById('mainHeader');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Плавное появление элементов
+        document.addEventListener('DOMContentLoaded', function() {
+            const animatedElements = document.querySelectorAll('.animate-fade-in, .animate-slide-in');
+            animatedElements.forEach((element, index) => {
+                const delay = index * 100;
+                element.style.animationDelay = `${delay}ms`;
+            });
+
+            // Премиум эффект для карточек
+            const cards = document.querySelectorAll('.feature-card, .stat-card');
+            cards.forEach((card, index) => {
+                card.style.transitionDelay = `${index * 50}ms`;
+            });
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Премиальная герой-секция -->
+<section class="hero-section">
+  <div class="container">
+    <div class="animate-fade-in">
+      <h1 class="hero-title">AgroPlan</h1>
+      <p class="hero-subtitle">
+        Элитная система планирования севооборота для требовательных аграриев, где каждая деталь имеет значение
+      </p>
+      <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 48px;">
+        <a href="/recommendations" class="btn btn-primary btn-large">
+          <span style="font-size: 1.3em;">🌿</span>
+          <span>Экспертные рекомендации</span>
+        </a>
+        <a href="/fields" class="btn btn-secondary btn-large">
+          <span style="font-size: 1.3em;">🗺️</span>
+          <span>Управление полями</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Премиум статистика -->
+<section style="margin-bottom: 100px;">
+  <div class="container">
+    <h2 class="section-title">Элитная аналитика в реальном времени</h2>
+    <div class="stats-grid">
+      <div class="stat-card animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="stat-number">{{ total_fields }}</div>
+        <div class="stat-label">Активных полей</div>
+      </div>
+      <div class="stat-card animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="stat-number">{{ "%.1f"|format(total_area) }}</div>
+        <div class="stat-label">Гектаров под контролем</div>
+      </div>
+      <div class="stat-card animate-fade-in" style="animation-delay: 0.3s;">
+        <div class="stat-number">{{ total_records }}</div>
+        <div class="stat-label">Аналитических записей</div>
+      </div>
+      <div class="stat-card animate-fade-in" style="animation-delay: 0.4s;">
+        <div class="stat-number">14</div>
+        <div class="stat-label">Премиум культур</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Премиум возможности -->
+<section style="margin-bottom: 100px;">
+  <div class="container">
+    <h2 class="section-title">Эксклюзивные возможности</h2>
+    <div class="card-grid">
+      <div class="feature-card animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="feature-icon">🌱</div>
+        <h3 class="feature-title">Интеллектуальный севооборот</h3>
+        <p class="feature-description">
+          Передовые алгоритмы искусственного интеллекта анализируют ваши поля и предоставляют оптимальные схемы ротации культур
+        </p>
+        <a href="/recommendations" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          <span>Исследовать</span>
+        </a>
+      </div>
+
+      <div class="feature-card animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="feature-icon">📊</div>
+        <h3 class="feature-title">Глубокая аналитика</h3>
+        <p class="feature-description">
+          Детальная статистика и предиктивная аналитика для принятия взвешенных решений на основе больших данных
+        </p>
+        <a href="/history" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          <span>Анализировать</span>
+        </a>
+      </div>
+
+      <div class="feature-card animate-fade-in" style="animation-delay: 0.3s;">
+        <div class="feature-icon">💎</div>
+        <h3 class="feature-title">Элитная экономика</h3>
+        <p class="feature-description">
+          Точный расчет рентабельности и финансовое моделирование для максимизации прибыли вашего хозяйства
+        </p>
+        <a href="/calculator" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          <span>Рассчитать</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Премиум призыв к действию -->
+<section style="margin-bottom: 100px;">
+  <div class="container">
+    <div class="card" style="background: rgba(23, 42, 69, 0.8); text-align: center; padding: 80px 60px; border: 1px solid rgba(255, 215, 0, 0.2);">
+      <h2 style="font-size: 3rem; font-weight: 800; margin-bottom: 24px; background: var(--gradient-gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        Готовы к премиум результатам?
+      </h2>
+      <p style="font-size: 1.3rem; color: var(--light-slate); margin-bottom: 48px; max-width: 600px; margin-left: auto; margin-right: auto;">
+        Присоединяйтесь к элитному сообществу аграриев, которые уже получают максимальную отдачу от каждого гектара
+      </p>
+      <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+        <a href="/fields" class="btn btn-primary btn-large">
+          <span>Начать сейчас</span>
+        </a>
+        <a href="/recommendations" class="btn btn-secondary btn-large">
+          <span>Демо-доступ</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

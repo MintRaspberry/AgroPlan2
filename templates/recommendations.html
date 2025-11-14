@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+.recommendations-hero {
+    background:
+        radial-gradient(ellipse at 80% 20%, rgba(100, 255, 218, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 80%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
+        var(--gradient-premium);
+    border-radius: var(--radius-3xl);
+    padding: 80px 60px;
+    margin-bottom: 60px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-luxury);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.recommendations-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle fill="%2364ffda" opacity="0.05" cx="50" cy="50" r="2"/></svg>');
+    animation: float 25s infinite linear;
+}
+
+.analysis-card {
+    background: rgba(23, 42, 69, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    border-radius: var(--radius-2xl);
+    padding: 50px;
+    box-shadow: var(--shadow-elegant);
+    margin-bottom: 60px;
+    transition: all 0.4s var(--ease-smooth);
+}
+
+.analysis-card:hover {
+    border-color: rgba(100, 255, 218, 0.2);
+    box-shadow: var(--shadow-luxury);
+}
+
+.recommendation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 24px;
+    margin: 40px 0;
+}
+
+.recommendation-card {
+    background: rgba(23, 42, 69, 0.8);
+    border: 1px solid;
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    transition: all 0.4s var(--ease-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.recommendation-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: inherit;
+    opacity: 0.6;
+}
+
+.recommendation-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-luxury);
+}
+
+.recommendation-success {
+    border-color: rgba(100, 255, 218, 0.3);
+}
+
+.recommendation-success::before {
+    background: var(--gradient-emerald);
+}
+
+.recommendation-warning {
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+.recommendation-warning::before {
+    background: var(--gradient-gold);
+}
+
+.recommendation-info {
+    border-color: rgba(168, 178, 209, 0.3);
+}
+
+.recommendation-info::before {
+    background: var(--light-slate);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Премиум герой -->
+<section class="recommendations-hero">
+    <div class="container">
+        <h1 class="hero-title">Экспертные рекомендации</h1>
+        <p class="hero-subtitle">
+            Персональные интеллектуальные рекомендации по севообороту на основе анализа больших данных и машинного обучения
+        </p>
+    </div>
+</section>
+
+<!-- Премиум форма анализа -->
+<section class="analysis-card">
+    <div class="container">
+        <h2 class="section-title">Профессиональный анализ</h2>
+        <form method="post" action="/recommendations">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; margin-bottom: 40px;">
+                <div class="form-group">
+                    <label for="field_id" class="form-label">Выберите поле для анализа</label>
+                    <select id="field_id" name="field_id" required class="form-select">
+                        <option value="">-- Выберите поле --</option>
+                        {% for field in fields %}
+                        <option value="{{ field.id }}" {% if selected_field_id == field.id %}selected{% endif %}>
+                            {{ field.name }} • {{ field.area }} га
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="target_crop" class="form-label">Целевая культура</label>
+                    <select id="target_crop" name="target_crop" required class="form-select">
+                        <option value="">-- Выберите культуру --</option>
+                        {% for rule in crop_rules %}
+                        <option value="{{ rule.crop }}" {% if target_crop == rule.crop %}selected{% endif %}>
+                            {{ rule.crop }} • {{ rule.family }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button type="submit" class="btn btn-primary btn-large">
+                    <span style="font-size: 1.2em;">🔍</span>
+                    <span>Запустить премиум анализ</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Премиум результаты -->
+{% if recommendations %}
+<section class="analysis-card">
+    <div class="container">
+        <h2 class="section-title">Результаты анализа</h2>
+        <p style="text-align: center; color: var(--light-slate); margin-bottom: 48px; font-size: 1.1rem;">
+            Детальный анализ для поля <strong style="color: var(--white);">"{{ selected_field_name }}"</strong>
+        </p>
+
+        <div class="recommendation-grid">
+            {% for recommendation in recommendations %}
+            <div class="recommendation-card recommendation-{{ recommendation.type }}">
+                <div style="display: flex; align-items: flex-start; gap: 20px;">
+                    <div style="font-size: 2rem; flex-shrink: 0;">
+                        {% if recommendation.type == "success" %}✅
+                        {% elif recommendation.type == "warning" %}⚠️
+                        {% elif recommendation.type == "info" %}ℹ️
+                        {% else %}❌{% endif %}
+                    </div>
+                    <div>
+                        <h3 style="color: var(--white); margin-bottom: 12px; font-size: 1.2rem; font-weight: 700;">
+                            {{ recommendation.title }}
+                        </h3>
+                        <p style="color: var(--light-slate); line-height: 1.7;">
+                            {{ recommendation.message }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
