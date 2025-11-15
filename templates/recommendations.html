@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 
+{% block title %}Рекомендации - AgroPlan{% endblock %}
+
 {% block extra_css %}
 <style>
 .recommendations-hero {
     background:
-        radial-gradient(ellipse at 80% 20%, rgba(100, 255, 218, 0.2) 0%, transparent 50%),
-        radial-gradient(ellipse at 20% 80%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
-        var(--gradient-premium);
+    radial-gradient(ellipse at 80% 20%, rgba(100, 255, 218, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
+    var(--gradient-premium);
     border-radius: var(--radius-3xl);
     padding: 80px 60px;
     margin-bottom: 60px;
@@ -99,6 +101,97 @@
 .recommendation-info::before {
     background: var(--light-slate);
 }
+
+.crop-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.crop-family {
+    font-size: 0.8rem;
+    color: var(--light-slate);
+    background: rgba(100, 255, 218, 0.1);
+    padding: 4px 8px;
+    border-radius: var(--radius-full);
+}
+
+.no-fields-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--light-slate);
+}
+
+.no-fields-message .icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: var(--white);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 16px 20px;
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    transition: all 0.3s var(--ease-smooth);
+    background: rgba(23, 42, 69, 0.8);
+    color: var(--white);
+    font-family: inherit;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--emerald);
+    box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.1);
+    background: rgba(23, 42, 69, 0.9);
+}
+
+.crops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.crop-item {
+    background: rgba(23, 42, 69, 0.6);
+    padding: 15px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    text-align: center;
+    transition: all 0.3s var(--ease-smooth);
+}
+
+.crop-item:hover {
+    border-color: rgba(100, 255, 218, 0.3);
+    transform: translateY(-2px);
+}
+
+.crop-name {
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 5px;
+}
+
+.crop-family {
+    font-size: 0.8rem;
+    color: var(--light-slate);
+}
 </style>
 {% endblock %}
 
@@ -108,7 +201,7 @@
     <div class="container">
         <h1 class="hero-title">Экспертные рекомендации</h1>
         <p class="hero-subtitle">
-            Персональные интеллектуальные рекомендации по севообороту на основе анализа больших данных и машинного обучения
+            Персональные интеллектуальные рекомендации по севообороту на основе анализа ваших полей и истории посадок
         </p>
     </div>
 </section>
@@ -117,6 +210,17 @@
 <section class="analysis-card">
     <div class="container">
         <h2 class="section-title">Профессиональный анализ</h2>
+
+        {% if not fields %}
+        <div class="no-fields-message">
+            <div class="icon">🌾</div>
+            <h3>У вас пока нет полей</h3>
+            <p>Для получения рекомендаций сначала добавьте поля в системе</p>
+            <a href="/fields" class="btn btn-primary" style="margin-top: 20px;">
+                📍 Перейти к добавлению полей
+            </a>
+        </div>
+        {% else %}
         <form method="post" action="/recommendations">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; margin-bottom: 40px;">
                 <div class="form-group">
@@ -125,10 +229,15 @@
                         <option value="">-- Выберите поле --</option>
                         {% for field in fields %}
                         <option value="{{ field.id }}" {% if selected_field_id == field.id %}selected{% endif %}>
-                            {{ field.name }} • {{ field.area }} га
+                            {{ field.name }} • {{ "%.2f"|format(field.area) if field.area else '0' }} га
                         </option>
                         {% endfor %}
                     </select>
+                    {% if fields %}
+                    <div style="margin-top: 10px; font-size: 0.9rem; color: var(--light-slate);">
+                        Доступно полей: {{ fields|length }}
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="form-group">
@@ -137,20 +246,26 @@
                         <option value="">-- Выберите культуру --</option>
                         {% for rule in crop_rules %}
                         <option value="{{ rule.crop }}" {% if target_crop == rule.crop %}selected{% endif %}>
-                            {{ rule.crop }} • {{ rule.family }}
+                            {{ rule.crop }}
                         </option>
                         {% endfor %}
                     </select>
+                    {% if crop_rules %}
+                    <div style="margin-top: 10px; font-size: 0.9rem; color: var(--light-slate);">
+                        Доступно культур: {{ crop_rules|length }}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
             <div style="text-align: center;">
                 <button type="submit" class="btn btn-primary btn-large">
                     <span style="font-size: 1.2em;">🔍</span>
-                    <span>Запустить премиум анализ</span>
+                    <span>Получить рекомендации</span>
                 </button>
             </div>
         </form>
+        {% endif %}
     </div>
 </section>
 
@@ -160,7 +275,8 @@
     <div class="container">
         <h2 class="section-title">Результаты анализа</h2>
         <p style="text-align: center; color: var(--light-slate); margin-bottom: 48px; font-size: 1.1rem;">
-            Детальный анализ для поля <strong style="color: var(--white);">"{{ selected_field_name }}"</strong>
+            Рекомендации для поля <strong style="color: var(--white);">"{{ selected_field_name }}"</strong>
+            с культурой <strong style="color: var(--white);">"{{ target_crop }}"</strong>
         </p>
 
         <div class="recommendation-grid">
@@ -171,13 +287,13 @@
                         {% if recommendation.type == "success" %}✅
                         {% elif recommendation.type == "warning" %}⚠️
                         {% elif recommendation.type == "info" %}ℹ️
-                        {% else %}❌{% endif %}
+                        {% else %}💡{% endif %}
                     </div>
-                    <div>
+                    <div style="flex: 1;">
                         <h3 style="color: var(--white); margin-bottom: 12px; font-size: 1.2rem; font-weight: 700;">
                             {{ recommendation.title }}
                         </h3>
-                        <p style="color: var(--light-slate); line-height: 1.7;">
+                        <p style="color: var(--light-slate); line-height: 1.7; margin: 0;">
                             {{ recommendation.message }}
                         </p>
                     </div>
@@ -188,4 +304,44 @@
     </div>
 </section>
 {% endif %}
+
+<!-- Информация о доступных культурах -->
+{% if crop_rules %}
+<section class="analysis-card">
+    <div class="container">
+        <h2 class="section-title">Доступные культуры</h2>
+        <p style="text-align: center; color: var(--light-slate); margin-bottom: 32px;">
+            Список культур, поддерживаемых системой рекомендаций
+        </p>
+
+        <div class="crops-grid">
+            {% for rule in crop_rules %}
+            <div class="crop-item">
+                <div class="crop-name">{{ rule.crop }}</div>
+                {% if rule.family %}
+                <div class="crop-family">{{ rule.family }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Информационная карточка -->
+<section>
+    <div class="container">
+        <div class="card" style="background: linear-gradient(135deg, rgba(255, 243, 205, 0.1), rgba(255, 234, 167, 0.1)); border: 1px solid rgba(255, 215, 0, 0.2);">
+            <h3 style="text-align: center; margin-bottom: 16px;">ℹ️ О системе рекомендаций</h3>
+            <p style="text-align: center; color: var(--light-slate); margin-bottom: 16px;">
+                Система анализирует историю посадок на выбранном поле, тип почвы, площадь и сезонные особенности
+                для формирования персонализированных рекомендаций по севообороту.
+            </p>
+            <p style="text-align: center; color: var(--gold); font-weight: 600;">
+                💡 Рекомендации основаны на агрономических принципах севооборота и могут быть скорректированы
+                с учетом местных условий и особенностей хозяйства.
+            </p>
+        </div>
+    </div>
+</section>
 {% endblock %}

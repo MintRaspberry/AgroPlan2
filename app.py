@@ -17,7 +17,7 @@ templates = Jinja2Templates(directory=os.path.join(current_dir, "templates"))
 app.mount("/static", StaticFiles(directory=os.path.join(current_dir, "static")), name="static")
 
 
-# Простой менеджер сессий в памяти (в продакшене используйте Redis или базу данных)
+# Простой менеджер сессий в памяти
 class SessionManager:
     def __init__(self):
         self.sessions = {}
@@ -56,10 +56,6 @@ class SessionManager:
             return message
         return None
 
-    def cleanup_old_sessions(self, hours=24):
-        # Очистка старых сессий (для демонстрации не реализована)
-        pass
-
 
 session_manager = SessionManager()
 
@@ -67,32 +63,23 @@ session_manager = SessionManager()
 # Middleware для обработки сессий
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):
-    # Получаем session_id из cookies
     session_id = request.cookies.get("session_id")
 
-    # Если сессии нет, создаем новую
     if not session_id or not session_manager.get_session(session_id):
         session_id = session_manager.create_session()
 
-    # Добавляем session_id в state запроса
     request.state.session_id = session_id
-
-    # Обрабатываем запрос
     response = await call_next(request)
-
-    # Устанавливаем cookie с session_id
     response.set_cookie(
         key="session_id",
         value=session_id,
-        max_age=3600 * 24,  # 24 часа
+        max_age=3600 * 24,
         httponly=True,
         samesite="lax"
     )
-
     return response
 
 
-# Вспомогательные функции для работы с flash-сообщениями
 def get_flash_messages(request: Request):
     session_id = request.state.session_id
     return {
@@ -156,7 +143,9 @@ async def read_fields(request: Request):
     })
 
 
-# Добавление нового поля с улучшенной валидацией
+# Добавление нового поля с улучшенной обработкой полигонов
+# Добавление нового поля с улучшенной обработкой полигонов
+# Добавление нового поля
 @app.post("/fields")
 async def create_field(
         request: Request,
@@ -173,52 +162,27 @@ async def create_field(
             set_flash_error(request, "Название поля не может быть пустым")
             return RedirectResponse(url="/fields", status_code=303)
 
-        if len(name.strip()) > 100:
-            set_flash_error(request, "Название поля слишком длинное (максимум 100 символов)")
-            return RedirectResponse(url="/fields", status_code=303)
-
         # Валидация полигона
         polygon_data = None
-        if polygon_coords:
+        if polygon_coords and polygon_coords.strip():
             try:
                 polygon_data = json.loads(polygon_coords)
-                # Проверяем, что это список координат
                 if not isinstance(polygon_data, list) or len(polygon_data) < 3:
                     set_flash_error(request, "Полигон должен содержать минимум 3 точки")
                     return RedirectResponse(url="/fields", status_code=303)
-
-                # Проверяем каждую точку
-                for point in polygon_data:
-                    if not isinstance(point, list) or len(point) != 2:
-                        set_flash_error(request, "Каждая точка должна содержать 2 координаты")
-                        return RedirectResponse(url="/fields", status_code=303)
-                    lat, lng = point
-                    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
-                        set_flash_error(request, "Координаты вне допустимого диапазона")
-                        return RedirectResponse(url="/fields", status_code=303)
-
             except (json.JSONDecodeError, ValueError) as e:
-                set_flash_error(request, f"Неверный формат полигона: {str(e)}")
+                set_flash_error(request, f"Неверный формат полигона")
                 return RedirectResponse(url="/fields", status_code=303)
 
-        # Валидация площади
-        if area is not None and area <= 0:
-            set_flash_error(request, "Площадь должна быть положительным числом")
-            return RedirectResponse(url="/fields", status_code=303)
-
-        # Валидация координат
-        if latitude and not (-90 <= latitude <= 90):
-            set_flash_error(request, "Широта вне допустимого диапазона")
-            return RedirectResponse(url="/fields", status_code=303)
-        if longitude and not (-180 <= longitude <= 180):
-            set_flash_error(request, "Долгота вне допустимого диапазона")
-            return RedirectResponse(url="/fields", status_code=303)
-
         # Создаем поле
-        field_id = database.db.create_field(name, area, latitude, longitude, polygon_coords, soil_type)
+        field_id = database.db.create_field(
+            name, area, latitude, longitude, polygon_coords, soil_type
+        )
 
-        # Показываем уведомление об успехе
-        set_flash_message(request, f"Поле '{name}' успешно создано!")
+        if field_id:
+            set_flash_message(request, f"Поле '{name}' успешно создано!")
+        else:
+            set_flash_error(request, "Ошибка при создании поля в базе данных")
 
         return RedirectResponse(url="/fields", status_code=303)
 
@@ -226,8 +190,6 @@ async def create_field(
         print(f"Ошибка создания поля: {e}")
         set_flash_error(request, "Ошибка при создании поля")
         return RedirectResponse(url="/fields", status_code=303)
-
-
 # Детальная страница поля
 @app.get("/fields/{field_id}", response_class=HTMLResponse)
 async def read_field(request: Request, field_id: int):
@@ -246,6 +208,16 @@ async def read_field(request: Request, field_id: int):
     # Получаем историю поля
     history = database.db.get_field_history(field_id)
 
+    # Формируем данные для графика севооборота
+    rotation_history = []
+    if history:
+        for record in history:
+            rotation_history.append({
+                'year': record['year'],
+                'season': record.get('season', 'весна'),
+                'crop': record['crop']
+            })
+
     flash_messages = get_flash_messages(request)
 
     return templates.TemplateResponse("field_detail.html", {
@@ -253,6 +225,7 @@ async def read_field(request: Request, field_id: int):
         "field": field,
         "history": history,
         "polygon_data": polygon_data,
+        "rotation_history": rotation_history,
         **flash_messages
     })
 
@@ -302,6 +275,7 @@ async def get_field_geojson(field_id: int):
                     "id": field['id'],
                     "name": field['name'],
                     "area": field['area'],
+                    "soil_type": field.get('soil_type', 'не указан'),
                     "created_at": field['created_at']
                 },
                 "geometry": {
@@ -393,13 +367,13 @@ async def add_history_with_map(request: Request):
 
 @app.post("/history/add")
 async def create_history_with_map(
-        request: Request,
-        field_id: int = Form(...),
-        year: int = Form(...),
-        season: str = Form(...),
-        crop: str = Form(...),
-        yield_amount: Optional[float] = Form(None),
-        notes: Optional[str] = Form(None)
+    request: Request,
+    field_id: int = Form(...),
+    year: int = Form(...),
+    season: str = Form(...),
+    crop: str = Form(...),
+    yield_amount: Optional[float] = Form(None),
+    notes: Optional[str] = Form(None)
 ):
     try:
         history_id = database.db.add_crop_history(field_id, year, season, crop, yield_amount, notes)
@@ -414,13 +388,13 @@ async def create_history_with_map(
 # Добавление записи в историю для конкретного поля
 @app.post("/fields/{field_id}/history")
 async def add_field_history(
-        field_id: int,
-        request: Request,
-        year: int = Form(...),
-        season: str = Form(...),
-        crop: str = Form(...),
-        yield_amount: Optional[float] = Form(None),
-        notes: Optional[str] = Form(None)
+    field_id: int,
+    request: Request,
+    year: int = Form(...),
+    season: str = Form(...),
+    crop: str = Form(...),
+    yield_amount: Optional[float] = Form(None),
+    notes: Optional[str] = Form(None)
 ):
     try:
         history_id = database.db.add_crop_history(field_id, year, season, crop, yield_amount, notes)
@@ -450,13 +424,13 @@ async def edit_history(request: Request, history_id: int):
 
 @app.post("/history/edit/{history_id}")
 async def update_history(
-        history_id: int,
-        request: Request,
-        year: int = Form(...),
-        season: str = Form(...),
-        crop: str = Form(...),
-        yield_amount: Optional[float] = Form(None),
-        notes: Optional[str] = Form(None)
+    history_id: int,
+    request: Request,
+    year: int = Form(...),
+    season: str = Form(...),
+    crop: str = Form(...),
+    yield_amount: Optional[float] = Form(None),
+    notes: Optional[str] = Form(None)
 ):
     entry = database.db.get_history_entry(history_id)
     if not entry:
@@ -482,52 +456,161 @@ async def delete_history(history_id: int, request: Request):
 # Рекомендации
 @app.get("/recommendations", response_class=HTMLResponse)
 async def read_recommendations(request: Request):
-    fields = database.db.get_all_fields()
-    crop_rules = database.db.get_all_crop_rules()
+    try:
+        fields = database.db.get_all_fields()
 
-    flash_messages = get_flash_messages(request)
+        # Базовые правила для культур
+        crop_rules = [
+            {"crop": "пшеница", "family": "Злаковые"},
+            {"crop": "картофель", "family": "Пасленовые"},
+            {"crop": "подсолнечник", "family": "Астровые"},
+            {"crop": "горох", "family": "Бобовые"},
+            {"crop": "ячмень", "family": "Злаковые"},
+            {"crop": "кукуруза", "family": "Злаковые"},
+            {"crop": "овёс", "family": "Злаковые"},
+            {"crop": "соя", "family": "Бобовые"},
+            {"crop": "рожь", "family": "Злаковые"},
+            {"crop": "гречиха", "family": "Гречишные"},
+            {"crop": "лён", "family": "Льновые"}
+        ]
 
-    return templates.TemplateResponse("recommendations.html", {
-        "request": request,
-        "fields": fields,
-        "crop_rules": crop_rules,
-        **flash_messages
-    })
+        flash_messages = get_flash_messages(request)
+
+        return templates.TemplateResponse("recommendations.html", {
+            "request": request,
+            "fields": fields,
+            "crop_rules": crop_rules,
+            **flash_messages
+        })
+    except Exception as e:
+        print(f"Ошибка в рекомендациях: {e}")
+        flash_messages = get_flash_messages(request)
+        return templates.TemplateResponse("recommendations.html", {
+            "request": request,
+            "fields": [],
+            "crop_rules": [],
+            **flash_messages
+        })
 
 
 @app.post("/recommendations")
 async def get_recommendations(
         request: Request,
         field_id: int = Form(...),
-        target_crop: str = Form(...),
-        recommendation_type: str = Form("basic")
+        target_crop: str = Form(...)
 ):
-    fields = database.db.get_all_fields()
-    crop_rules = database.db.get_all_crop_rules()
-    field = database.db.get_field(field_id)
+    try:
+        fields = database.db.get_all_fields()
+        field = database.db.get_field(field_id)
 
-    if not field:
-        raise HTTPException(status_code=404, detail="Поле не найдено")
+        if not field:
+            set_flash_error(request, "Поле не найдено")
+            return RedirectResponse(url="/recommendations", status_code=303)
 
-    # Упрощенная логика для примера
-    recommendations = [{
-        "type": "success",
-        "title": "Рекомендация",
-        "message": f"Для поля {field['name']} культура {target_crop} подходит хорошо."
-    }]
+        # Получаем историю поля для анализа
+        field_history = database.db.get_field_history(field_id)
 
-    flash_messages = get_flash_messages(request)
+        # Создаем рекомендации на основе истории и выбранной культуры
+        recommendations = []
 
-    return templates.TemplateResponse("recommendations.html", {
-        "request": request,
-        "fields": fields,
-        "crop_rules": crop_rules,
-        "recommendations": recommendations,
-        "selected_field_id": field_id,
-        "target_crop": target_crop,
-        "selected_field_name": field['name'],
-        **flash_messages
-    })
+        # Проверяем, была ли эта культура на поле в последние годы
+        recent_years = [record for record in field_history if record['year'] >= datetime.now().year - 3]
+        same_crop_recently = any(record['crop'] == target_crop for record in recent_years)
+
+        if same_crop_recently:
+            recommendations.append({
+                "type": "warning",
+                "title": "⚠️ Повторная посадка",
+                "message": f"Культура '{target_crop}' уже выращивалась на этом поле в последние 3 года. Рекомендуется выбрать другую культуру для севооборота."
+            })
+        else:
+            recommendations.append({
+                "type": "success",
+                "title": "✅ Хороший выбор",
+                "message": f"Культура '{target_crop}' хорошо подходит для севооборота на этом поле."
+            })
+
+        # Добавляем рекомендации по типу почвы
+        soil_type = field.get('soil_type', 'не указан')
+        if soil_type != 'не указан':
+            soil_recommendations = {
+                'суглинок': 'Хорошо подходит для большинства культур',
+                'чернозем': 'Отличная почва для всех культур',
+                'песчаная': 'Требует больше полива и удобрений',
+                'глинистая': 'Нуждается в улучшении дренажа',
+                'торфяная': 'Требует известкования'
+            }
+            soil_advice = soil_recommendations.get(soil_type, 'Убедитесь в соответствии культуры типу почвы')
+
+            recommendations.append({
+                "type": "info",
+                "title": "🌱 Тип почвы",
+                "message": f"Тип почвы: {soil_type}. {soil_advice}."
+            })
+
+        # Добавляем сезонные рекомендации
+        current_month = datetime.now().month
+        if current_month in [3, 4, 5]:  # весна
+            season_advice = "Оптимальное время для весенней посадки"
+        elif current_month in [6, 7, 8]:  # лето
+            season_advice = "Рассмотрите возможность летнего посева или подготовки к осени"
+        else:  # осень
+            season_advice = "Подходящее время для осенней посадки озимых культур"
+
+        recommendations.append({
+            "type": "info",
+            "title": "📅 Сезонные рекомендации",
+            "message": season_advice
+        })
+
+        # Добавляем рекомендации по площади
+        area = field.get('area', 0)
+        if area > 0:
+            if area < 5:
+                area_advice = "Малая площадь - рассмотрите интенсивные технологии"
+            elif area < 20:
+                area_advice = "Средняя площадь - подходят стандартные технологии"
+            else:
+                area_advice = "Большая площадь - эффективны механизированные технологии"
+
+            recommendations.append({
+                "type": "info",
+                "title": "📏 Площадь поля",
+                "message": f"Площадь: {area} га. {area_advice}."
+            })
+
+        # Базовые правила для культур
+        crop_rules = [
+            {"crop": "пшеница", "family": "Злаковые"},
+            {"crop": "картофель", "family": "Пасленовые"},
+            {"crop": "подсолнечник", "family": "Астровые"},
+            {"crop": "горох", "family": "Бобовые"},
+            {"crop": "ячмень", "family": "Злаковые"},
+            {"crop": "кукуруза", "family": "Злаковые"},
+            {"crop": "овёс", "family": "Злаковые"},
+            {"crop": "соя", "family": "Бобовые"},
+            {"crop": "рожь", "family": "Злаковые"},
+            {"crop": "гречиха", "family": "Гречишные"},
+            {"crop": "лён", "family": "Льновые"}
+        ]
+
+        flash_messages = get_flash_messages(request)
+
+        return templates.TemplateResponse("recommendations.html", {
+            "request": request,
+            "fields": fields,
+            "crop_rules": crop_rules,
+            "recommendations": recommendations,
+            "selected_field_id": field_id,
+            "target_crop": target_crop,
+            "selected_field_name": field['name'],
+            **flash_messages
+        })
+
+    except Exception as e:
+        print(f"Ошибка в рекомендациях: {e}")
+        set_flash_error(request, "Ошибка при формировании рекомендаций")
+        return RedirectResponse(url="/recommendations", status_code=303)
 
 
 # Калькулятор
@@ -542,9 +625,9 @@ async def read_calculator(request: Request):
 
 @app.post("/calculator")
 async def calculate_economics(
-        request: Request,
-        crop: str = Form(...),
-        area: float = Form(...)
+    request: Request,
+    crop: str = Form(...),
+    area: float = Form(...)
 ):
     # Существующая логика калькулятора...
     prices = {
@@ -587,5 +670,4 @@ async def calculate_economics(
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
